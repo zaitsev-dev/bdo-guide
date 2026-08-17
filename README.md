@@ -13,6 +13,8 @@ python3 -m venv .venv
 ## Проверка production-сборки
 
 ```bash
+.venv/bin/python scripts/check_markdown_layout.py docs prompts
+.venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m mkdocs build --strict --site-dir site
 ```
 

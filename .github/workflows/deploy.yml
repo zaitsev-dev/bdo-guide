@@ -38,6 +38,12 @@ jobs:
             exit 1
           fi
 
+      - name: Validate Markdown layout
+        run: python scripts/check_markdown_layout.py docs prompts
+
+      - name: Test Markdown validator
+        run: python -m unittest discover -s tests -v
+
       - name: Build
         run: python -m mkdocs build --strict --site-dir site
 
