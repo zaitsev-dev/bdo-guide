@@ -71,6 +71,7 @@ class StructureParser(HTMLParser):
         self.h1_count = 0
         self.h1_text = []
         self.step_ids = []
+        self.step_metadata = []
         self.toc_hrefs = []
         self.byline_anchors = []
         self.byline_text = []
@@ -107,6 +108,12 @@ class StructureParser(HTMLParser):
 
         if tag == "h3" and "guide-step" in classes:
             self.step_ids.append(values.get("id"))
+            self.step_metadata.append(
+                {
+                    "level": values.get("data-level"),
+                    "timecode": values.get("data-timecode"),
+                }
+            )
 
         if tag == "ol":
             if self._toc_depth:
@@ -283,6 +290,14 @@ class GuideRenderingTests(unittest.TestCase):
                 )
                 if slug in GUIDES:
                     self.assertEqual(len(parser.step_ids), GUIDES[slug]["steps"])
+
+    def test_second_guide_preserves_valid_level_and_defaults_only_invalid_level(self):
+        _, parser = self.pages["02-horses"]
+        levels_by_timecode = {
+            step["timecode"]: step["level"] for step in parser.step_metadata
+        }
+        self.assertEqual(levels_by_timecode["14:20–15:50"], "10")
+        self.assertEqual(levels_by_timecode["18:40–20:20"], "Не важно")
 
     def test_first_guide_links_to_next_two_guides_without_previous(self):
         _, parser = self.pages["01-start"]
