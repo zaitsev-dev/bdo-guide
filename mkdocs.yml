@@ -1,0 +1,19 @@
+site_name: Black Desert 2026 — гайд для новичков
+site_description: Пошаговый маршрут для плавного старта в Black Desert
+
+theme:
+  name: material
+  language: ru
+  features:
+    - navigation.footer
+    - navigation.top
+    - search.suggest
+
+plugins:
+  - search:
+      lang: ru
+
+markdown_extensions:
+  - toc:
+      toc_depth: 2-3
+      permalink: true
