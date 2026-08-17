@@ -231,6 +231,18 @@ class GuideRenderingTests(unittest.TestCase):
                 if slug in GUIDES:
                     self.assertEqual(parser.h1_text, [GUIDES[slug]["title"]])
 
+    def test_each_guide_renders_one_material_header_component(self):
+        for slug, (_, parser) in self.pages.items():
+            with self.subTest(slug=slug):
+                matches = parser.elements_with_attribute("data-md-component")
+                header_components = [
+                    (tag, attrs)
+                    for tag, attrs in matches
+                    if attrs["data-md-component"] == "header"
+                ]
+                self.assertEqual(len(header_components), 1)
+                self.assertEqual(header_components[0][0], "header")
+
     def test_each_guide_renders_unique_hooks_on_expected_elements(self):
         expected_hooks = {
             "data-guide-page": "div",
