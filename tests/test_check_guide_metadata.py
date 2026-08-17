@@ -85,6 +85,16 @@ class ValidateGuideFileTests(unittest.TestCase):
         errors = self.validate(VALID_ARTICLE, filename="02-example.md")
         self.assertTrue(any("имени файла" in error for error in errors))
 
+    def test_rejects_float_guide_number(self):
+        source = VALID_ARTICLE.replace("guide_number: 1", "guide_number: 1.0")
+        errors = self.validate(source)
+        self.assertTrue(any("целым числом" in error for error in errors))
+
+    def test_rejects_boolean_guide_number(self):
+        source = VALID_ARTICLE.replace("guide_number: 1", "guide_number: true")
+        errors = self.validate(source)
+        self.assertTrue(any("целым числом" in error for error in errors))
+
     def test_rejects_video_id_not_matching_source_url(self):
         source = VALID_ARTICLE.replace(
             "video_id: dQw4w9WgXcQ",

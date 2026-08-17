@@ -83,8 +83,12 @@ def validate_guide_file(path: Path) -> list[str]:
     if meta.get("template") != "guide.html":
         errors.append(f"{path}: template должен быть guide.html")
 
+    guide_number = meta.get("guide_number")
+    if type(guide_number) is not int:
+        errors.append(f"{path}: guide_number должен быть целым числом")
+
     match = FILENAME_NUMBER.match(path.name)
-    if match and meta.get("guide_number") != int(match.group(1)):
+    if type(guide_number) is int and match and guide_number != int(match.group(1)):
         errors.append(f"{path}: guide_number не совпадает с номером имени файла")
 
     if meta.get("video_id") and _youtube_video_id(str(meta.get("source_url", ""))) != meta["video_id"]:
@@ -136,7 +140,7 @@ def validate_guide_directory(path: Path) -> list[str]:
     numbers = []
     for file in files:
         _, meta = get_data(file.read_text(encoding="utf-8"))
-        if isinstance(meta.get("guide_number"), int):
+        if type(meta.get("guide_number")) is int:
             numbers.append(meta["guide_number"])
     if len(numbers) != len(set(numbers)):
         errors.append(f"{path}: guide_number должен быть уникальным")
