@@ -3,6 +3,7 @@ site_description: Пошаговый маршрут для плавного ст
 
 theme:
   name: material
+  custom_dir: overrides
   language: ru
   features:
     - navigation.footer
@@ -13,7 +14,11 @@ plugins:
   - search:
       lang: ru
 
+hooks:
+  - hooks/guide.py
+
 markdown_extensions:
+  - attr_list
   - toc:
       toc_depth: 2-3
       permalink: true
