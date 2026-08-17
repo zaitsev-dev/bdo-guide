@@ -38,6 +38,9 @@ jobs:
             exit 1
           fi
 
+      - name: Validate guide metadata
+        run: python scripts/check_guide_metadata.py docs/guide
+
       - name: Validate Markdown layout
         run: python scripts/check_markdown_layout.py docs prompts
 
