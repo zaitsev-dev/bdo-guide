@@ -71,6 +71,11 @@ body {
   color: var(--guide-fg);
 }
 
+.guide-masthead.md-header--shadow {
+  box-shadow: none;
+  transition: none;
+}
+
 .guide-masthead__inner {
   width: min(100% - 48px, 1240px);
   min-height: 72px;
