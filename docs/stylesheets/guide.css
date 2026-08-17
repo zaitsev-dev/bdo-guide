@@ -35,7 +35,6 @@ html {
 }
 
 body {
-  overflow-x: hidden;
   background: var(--guide-bg);
 }
 
@@ -763,10 +762,10 @@ body {
   text-align: center;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1111px) {
   .guide-reading-layout {
     grid-template-columns: 200px minmax(0, 720px);
-    gap: 48px;
+    gap: clamp(32px, 4.5vw, 48px);
   }
 }
 
