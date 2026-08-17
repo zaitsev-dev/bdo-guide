@@ -86,8 +86,6 @@
   const trackedHeadings = headings.filter((heading) => linkByHeading.has(heading));
   if (!trackedHeadings.length) return;
 
-  document.documentElement.classList.add("js");
-
   let activeLink = null;
   let manualTocNavigation = false;
   let returnTimer = null;
@@ -239,4 +237,5 @@
   });
 
   updateFromScroll();
+  root.classList.add("guide-toc-ready");
 })();

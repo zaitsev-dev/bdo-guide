@@ -806,11 +806,11 @@ body {
     display: none;
   }
 
-  .guide-toc-toggle {
+  .guide-toc-ready .guide-toc-toggle {
     display: flex;
   }
 
-  .js .guide-toc:not(.is-open) {
+  .guide-toc-ready .guide-toc:not(.is-open) {
     display: none;
   }
 
