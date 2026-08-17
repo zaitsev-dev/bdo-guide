@@ -1,9 +1,12 @@
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts.check_guide_metadata import (
     parse_timecode_range,
+    validate_guide_directory,
     validate_guide_file,
 )
 
@@ -29,6 +32,9 @@ video_id: dQw4w9WgXcQ
 
 Краткий итог.
 """
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+VALIDATOR_SCRIPT = REPOSITORY_ROOT / "scripts/check_guide_metadata.py"
 
 
 class ParseTimecodeRangeTests(unittest.TestCase):
@@ -68,6 +74,31 @@ class ValidateGuideFileTests(unittest.TestCase):
         errors = self.validate(source)
         self.assertTrue(any("метаданные шага видимы" in error for error in errors))
 
+    def test_rejects_historical_visible_level_label_variants(self):
+        for label in (
+            "Уровень твинка",
+            "Уровень персонажа",
+            "Уровень",
+        ):
+            with self.subTest(label=label):
+                source = VALID_ARTICLE.replace(
+                    "Текст шага.",
+                    f"- **{label}:** 10\n\nТекст шага.",
+                )
+                errors = self.validate(source)
+                self.assertTrue(
+                    any("метаданные шага видимы" in error for error in errors)
+                )
+
+    def test_does_not_reject_unrelated_level_prose(self):
+        source = VALID_ARTICLE.replace(
+            "Текст шага.",
+            "- **Совет:** уровень доверия важен.\n\n"
+            "В тексте можно упомянуть **уровень персонажа**.\n\n"
+            "Текст шага.",
+        )
+        self.assertEqual(self.validate(source), [])
+
     def test_rejects_step_without_level(self):
         source = VALID_ARTICLE.replace(' data-level="Не важен"', "")
         errors = self.validate(source)
@@ -102,3 +133,64 @@ class ValidateGuideFileTests(unittest.TestCase):
         )
         errors = self.validate(source)
         self.assertTrue(any("video_id" in error for error in errors))
+
+
+class ValidateGuideDirectoryTests(unittest.TestCase):
+    def test_rejects_missing_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory, "missing")
+            errors = validate_guide_directory(missing)
+
+        self.assertTrue(any("не существует" in error for error in errors))
+
+    def test_rejects_directory_without_guide_articles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            Path(path, "index.md").write_text("# Гайд\n", encoding="utf-8")
+            errors = validate_guide_directory(path)
+
+        self.assertTrue(any("нет статей" in error for error in errors))
+
+    def test_accepts_directory_with_valid_guide_article(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            Path(path, "01-example.md").write_text(
+                VALID_ARTICLE,
+                encoding="utf-8",
+            )
+            self.assertEqual(validate_guide_directory(path), [])
+
+
+class GuideMetadataCliTests(unittest.TestCase):
+    def run_validator(self, path: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(VALIDATOR_SCRIPT), str(path)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_returns_zero_for_valid_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            Path(path, "01-example.md").write_text(
+                VALID_ARTICLE,
+                encoding="utf-8",
+            )
+            result = self.run_validator(path)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_returns_nonzero_for_missing_and_empty_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = (root / "missing", root / "empty")
+            paths[1].mkdir()
+
+            for path in paths:
+                with self.subTest(path=path.name):
+                    result = self.run_validator(path)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertTrue(result.stdout.strip())

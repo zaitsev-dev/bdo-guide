@@ -21,7 +21,9 @@ REQUIRED_META = (
     "video_id",
 )
 VISIBLE_STEP_META = re.compile(
-    r"(?m)^- \*\*(?:Уровень основы|Таймкод):\*\*"
+    r"(?mi)^[ \t]*[-*+][ \t]+\*\*[ \t]*"
+    r"(?:Уровень(?:[ \t]+[А-Яа-яЁё][А-Яа-яЁё-]*){0,3}|Таймкод)"
+    r"[ \t]*:\*\*"
 )
 GUIDE_NUMBER_IN_TITLE = re.compile(r"(?i)\bгайд\s*№?\s*\d+")
 FILENAME_NUMBER = re.compile(r"^(\d{2})-")
@@ -135,7 +137,13 @@ def validate_guide_file(path: Path) -> list[str]:
 
 
 def validate_guide_directory(path: Path) -> list[str]:
+    if not path.exists():
+        return [f"{path}: каталог гайдов не существует"]
+
     files = sorted(path.glob("[0-9][0-9]-*.md"))
+    if not files:
+        return [f"{path}: нет статей гайда по шаблону NN-*.md"]
+
     errors = [error for file in files for error in validate_guide_file(file)]
     numbers = []
     for file in files:
