@@ -1,0 +1,35 @@
+{% macro render_steps(items) %}
+  {% for item in items %}
+    {% if item.level == 3 %}
+      <li class="guide-toc__item">
+        <a class="guide-toc__link" href="{{ item.url }}">{{ item.title }}</a>
+      </li>
+    {% endif %}
+    {% if item.children %}{{ render_steps(item.children) }}{% endif %}
+  {% endfor %}
+{% endmacro %}
+
+<aside class="guide-toc-shell" aria-label="Навигация по материалу">
+  <button class="guide-toc-toggle" type="button" aria-controls="guide-toc" aria-expanded="false">
+    <span>Оглавление</span><span aria-hidden="true">＋</span>
+  </button>
+  <p class="guide-toc-label">В этом материале</p>
+  <nav class="guide-toc" id="guide-toc" aria-label="Прокручиваемое оглавление статьи" tabindex="0">
+    <ol class="guide-toc__list" data-guide-step-list>
+      {{ render_steps(page.toc) }}
+    </ol>
+  </nav>
+  <section class="guide-context" aria-label="Параметры активного шага" aria-live="polite" aria-atomic="true">
+    <p class="guide-context__label">Позиция в материале</p>
+    <dl class="guide-context__grid">
+      <div class="guide-context__item">
+        <dt>Таймкод</dt>
+        <dd><button type="button" data-guide-context-timecode disabled>—</button></dd>
+      </div>
+      <div class="guide-context__item">
+        <dt>Уровень</dt>
+        <dd><output data-guide-context-level>—</output></dd>
+      </div>
+    </dl>
+  </section>
+</aside>

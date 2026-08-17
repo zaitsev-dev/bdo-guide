@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ 'stylesheets/guide.css' | url }}">
+{% endblock %}
+
+{% block header %}
+  {% include "partials/guide/masthead.html" %}
+{% endblock %}
+
+{% block site_nav %}{% endblock %}
+
+{% block container %}
+  <div class="guide-page" data-guide-page data-guide-number="{{ page.meta.guide_number }}">
+    {% include "partials/guide/hero.html" %}
+    {% include "partials/guide/video.html" %}
+    <div class="guide-reading-layout">
+      {% include "partials/guide/toc.html" %}
+      <article class="guide-article md-typeset" id="article-content">
+        {{ page.content }}
+      </article>
+    </div>
+    {% include "partials/guide/series.html" %}
+  </div>
+{% endblock %}
+
+{% block footer %}
+  <footer class="guide-footer">Некоммерческий гайд по Black Desert</footer>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ 'javascripts/guide-video.js' | url }}"></script>
+  <script src="{{ 'javascripts/guide-toc.js' | url }}"></script>
+{% endblock %}

@@ -1,0 +1,22 @@
+<section class="guide-series" data-guide-series aria-labelledby="guide-series-title">
+  <p class="guide-series__position">Гайд {{ guide_series.index }} из {{ guide_series.total }}</p>
+  <h2 id="guide-series-title">Продолжить по порядку</h2>
+  {% if guide_series.next %}
+    <article class="guide-series__next">
+      <p>Следующая статья · Гайд №{{ guide_series.next.meta.guide_number }}</p>
+      <h3>{{ guide_series.next.title }}</h3>
+      <p>{{ guide_series.next.meta.description }}</p>
+      <a href="{{ guide_series.next.url | url }}">Перейти к следующей статье</a>
+    </article>
+  {% else %}
+    <p class="guide-series__complete">Вы дошли до конца опубликованной серии.</p>
+  {% endif %}
+  <nav class="guide-series__secondary" aria-label="Другие статьи серии">
+    {% if guide_series.previous %}
+      <a href="{{ guide_series.previous.url | url }}">← Гайд №{{ guide_series.previous.meta.guide_number }}: {{ guide_series.previous.title }}</a>
+    {% endif %}
+    {% if guide_series.after_next %}
+      <a href="{{ guide_series.after_next.url | url }}">После следующей · Гайд №{{ guide_series.after_next.meta.guide_number }}: {{ guide_series.after_next.title }} →</a>
+    {% endif %}
+  </nav>
+</section>
