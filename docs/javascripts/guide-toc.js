@@ -12,7 +12,7 @@
   const video = root.querySelector("[data-guide-video]");
   const toggle = root.querySelector(".guide-toc-toggle");
 
-  if (!toc || !list) return;
+  if (!toc || !list || !toggle) return;
 
   const headings = Array.from(root.querySelectorAll("h3.guide-step[id]"));
   const links = Array.from(list.querySelectorAll("a[href*='#']"));
