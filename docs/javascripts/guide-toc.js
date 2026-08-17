@@ -1,6 +1,4 @@
 (() => {
-  document.documentElement.classList.add("js");
-
   const root = document.querySelector("[data-guide-page]");
   if (!root) return;
 
@@ -87,6 +85,8 @@
 
   const trackedHeadings = headings.filter((heading) => linkByHeading.has(heading));
   if (!trackedHeadings.length) return;
+
+  document.documentElement.classList.add("js");
 
   let activeLink = null;
   let manualTocNavigation = false;
