@@ -44,7 +44,7 @@ jobs:
       - name: Validate Markdown layout
         run: python scripts/check_markdown_layout.py docs prompts
 
-      - name: Test Markdown validator
+      - name: Test guide build contract
         run: python -m unittest discover -s tests -v
 
       - name: Build

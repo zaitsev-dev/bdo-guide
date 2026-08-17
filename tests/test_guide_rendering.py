@@ -3,48 +3,13 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
+import markdown
 from mkdocs.commands.build import build
 from mkdocs.config import load_config
+from mkdocs.utils.meta import get_data
 
-
-GUIDES = {
-    "01-start": {
-        "number": "1",
-        "title": "Настройки, плавный старт и аккаунт с нуля",
-        "source_title": "№1 ГАЙД ДЛЯ НОВИЧКОВ 2026 Настройки, Плавный старт. Аккаунт с нуля",
-        "source_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "video_id": "dQw4w9WgXcQ",
-        "author": "Dr DozA",
-        "steps": 23,
-    },
-    "02-horses": {
-        "number": "2",
-        "title": "Гильдия, питомцы, твины и выбор лучшего коня",
-        "source_title": "№2 ГАЙД ДЛЯ НОВИЧКОВ 2026 Гильдия и Заработок, Во Пико Какого коня взять",
-        "source_url": "https://www.youtube.com/watch?v=F3S_L8nL_hY",
-        "video_id": "F3S_L8nL_hY",
-        "author": "Dr DozA",
-        "steps": 17,
-    },
-    "03-plants": {
-        "number": "3",
-        "title": "Огороды и повышение параметров персонажа",
-        "source_title": "№3 ГАЙД ДЛЯ НОВИЧКОВ 2026 Огороды и Повышение параметров персонажа в БДО",
-        "source_url": "https://www.youtube.com/watch?v=Fq24n8O0YkE",
-        "video_id": "Fq24n8O0YkE",
-        "author": "Dr DozA",
-        "steps": 16,
-    },
-    "04-magnus": {
-        "number": "4",
-        "title": "Магнус, горничные и Кальфеонская цепочка квестов",
-        "source_title": "№4 ГАЙД ДЛЯ НОВИЧКОВ 2026 Магнус 2026. Горничные, Кальфеонская цепочка кв в БДО",
-        "source_url": "https://www.youtube.com/watch?v=8d5ZnxDFXZk",
-        "video_id": "8d5ZnxDFXZk",
-        "author": "Dr DozA",
-        "steps": 9,
-    },
-}
+from hooks.guide import find_h1s
+from scripts.check_guide_metadata import HeadingCollector
 
 VOID_ELEMENTS = {
     "area",
@@ -213,11 +178,28 @@ class GuideRenderingTests(unittest.TestCase):
         )
         build(config)
 
-        cls.guide_slugs = sorted(
-            source.stem
-            for source in Path("docs/guide").glob("*.md")
-            if source.name != "index.md"
-        )
+        cls.guides = []
+        for source in Path("docs/guide").glob("[0-9][0-9]-*.md"):
+            body, meta = get_data(source.read_text(encoding="utf-8"))
+            titles = find_h1s(body)
+            rendered = markdown.markdown(body, extensions=["attr_list", "toc"])
+            headings = HeadingCollector()
+            headings.feed(rendered)
+            cls.guides.append(
+                {
+                    "slug": source.stem,
+                    "number": meta["guide_number"],
+                    "title": titles[0][2],
+                    "source_title": meta["source_title"],
+                    "source_url": meta["source_url"],
+                    "video_id": meta["video_id"],
+                    "author": meta["author"],
+                    "steps": sum(tag == "h3" for tag, _ in headings.headings),
+                }
+            )
+        cls.guides.sort(key=lambda guide: guide["number"])
+        cls.guides_by_slug = {guide["slug"]: guide for guide in cls.guides}
+        cls.guide_slugs = [guide["slug"] for guide in cls.guides]
         cls.pages = {}
         for slug in cls.guide_slugs:
             html = Path(
@@ -228,15 +210,21 @@ class GuideRenderingTests(unittest.TestCase):
             cls.pages[slug] = (html, parser)
 
     def test_discovers_every_guide_article(self):
-        self.assertEqual(set(self.guide_slugs), set(GUIDES))
+        built_slugs = sorted(
+            page.parent.name
+            for page in Path(self.temp.name, "guide").glob("*/index.html")
+        )
+        self.assertEqual(built_slugs, sorted(self.guide_slugs))
         self.assertNotIn("index", self.guide_slugs)
 
     def test_each_guide_renders_one_unnumbered_h1(self):
         for slug, (_, parser) in self.pages.items():
             with self.subTest(slug=slug):
                 self.assertEqual(parser.h1_count, 1)
-                if slug in GUIDES:
-                    self.assertEqual(parser.h1_text, [GUIDES[slug]["title"]])
+                self.assertEqual(
+                    parser.h1_text,
+                    [self.guides_by_slug[slug]["title"]],
+                )
 
     def test_each_guide_renders_one_material_header_component(self):
         for slug, (_, parser) in self.pages.items():
@@ -268,16 +256,15 @@ class GuideRenderingTests(unittest.TestCase):
                     self.assertEqual(matches[0][0], expected_tag, hook)
                     elements[hook] = matches[0][1]
 
-                if slug in GUIDES:
-                    expected = GUIDES[slug]
-                    self.assertEqual(
-                        elements["data-guide-page"]["data-guide-number"],
-                        expected["number"],
-                    )
-                    self.assertEqual(
-                        elements["data-guide-video"]["data-video-id"],
-                        expected["video_id"],
-                    )
+                expected = self.guides_by_slug[slug]
+                self.assertEqual(
+                    elements["data-guide-page"]["data-guide-number"],
+                    str(expected["number"]),
+                )
+                self.assertEqual(
+                    elements["data-guide-video"]["data-video-id"],
+                    expected["video_id"],
+                )
 
     def test_each_toc_links_once_to_every_rendered_guide_step(self):
         for slug, (_, parser) in self.pages.items():
@@ -288,8 +275,10 @@ class GuideRenderingTests(unittest.TestCase):
                     parser.toc_hrefs,
                     [f"#{step_id}" for step_id in parser.step_ids],
                 )
-                if slug in GUIDES:
-                    self.assertEqual(len(parser.step_ids), GUIDES[slug]["steps"])
+                self.assertEqual(
+                    len(parser.step_ids),
+                    self.guides_by_slug[slug]["steps"],
+                )
 
     def test_second_guide_preserves_valid_level_and_defaults_only_invalid_level(self):
         _, parser = self.pages["02-horses"]
@@ -299,70 +288,66 @@ class GuideRenderingTests(unittest.TestCase):
         self.assertEqual(levels_by_timecode["14:20–15:50"], "10")
         self.assertEqual(levels_by_timecode["18:40–20:20"], "Не важно")
 
-    def test_first_guide_links_to_next_two_guides_without_previous(self):
-        _, parser = self.pages["01-start"]
-        series_text = " ".join("".join(parser.series_text).split())
-        self.assertIn("Следующая статья · Гайд №2", series_text)
-        self.assertEqual(
-            parser.series_anchors,
-            [
-                {
-                    "href": "../02-horses/",
-                    "text": "Перейти к следующей статье",
-                    "role": "next",
-                },
-                {
-                    "href": "../03-plants/",
-                    "text": "После следующей · Гайд №3: Огороды и повышение параметров персонажа →",
-                    "role": "secondary",
-                },
-            ],
-        )
+    def test_each_guide_renders_dynamic_series_navigation(self):
+        total = len(self.guides)
+        for index, guide in enumerate(self.guides):
+            with self.subTest(slug=guide["slug"]):
+                _, parser = self.pages[guide["slug"]]
+                series_text = " ".join("".join(parser.series_text).split())
+                self.assertIn(f"Гайд {index + 1} из {total}", series_text)
 
-    def test_second_guide_links_to_previous_next_and_after_next(self):
-        _, parser = self.pages["02-horses"]
-        series_text = " ".join("".join(parser.series_text).split())
-        self.assertIn("Следующая статья · Гайд №3", series_text)
-        self.assertEqual(
-            parser.series_anchors,
-            [
-                {
-                    "href": "../03-plants/",
-                    "text": "Перейти к следующей статье",
-                    "role": "next",
-                },
-                {
-                    "href": "../01-start/",
-                    "text": "← Гайд №1: Настройки, плавный старт и аккаунт с нуля",
-                    "role": "secondary",
-                },
-                {
-                    "href": "../04-magnus/",
-                    "text": "После следующей · Гайд №4: Магнус, горничные и Кальфеонская цепочка квестов →",
-                    "role": "secondary",
-                },
-            ],
-        )
+                expected_anchors = []
+                if index + 1 < total:
+                    following = self.guides[index + 1]
+                    self.assertIn(
+                        f"Следующая статья · Гайд №{following['number']}",
+                        series_text,
+                    )
+                    expected_anchors.append(
+                        {
+                            "href": f"../{following['slug']}/",
+                            "text": "Перейти к следующей статье",
+                            "role": "next",
+                        }
+                    )
+                else:
+                    self.assertIn(
+                        "Вы дошли до конца опубликованной серии.",
+                        series_text,
+                    )
 
-    def test_last_guide_renders_end_state_and_only_previous_link(self):
-        _, parser = self.pages["04-magnus"]
-        series_text = " ".join("".join(parser.series_text).split())
-        self.assertIn("Вы дошли до конца опубликованной серии.", series_text)
-        self.assertEqual(
-            parser.series_anchors,
-            [
-                {
-                    "href": "../03-plants/",
-                    "text": "← Гайд №3: Огороды и повышение параметров персонажа",
-                    "role": "secondary",
-                }
-            ],
-        )
+                if index > 0:
+                    previous = self.guides[index - 1]
+                    expected_anchors.append(
+                        {
+                            "href": f"../{previous['slug']}/",
+                            "text": (
+                                f"← Гайд №{previous['number']}: "
+                                f"{previous['title']}"
+                            ),
+                            "role": "secondary",
+                        }
+                    )
+
+                if index + 2 < total:
+                    after_next = self.guides[index + 2]
+                    expected_anchors.append(
+                        {
+                            "href": f"../{after_next['slug']}/",
+                            "text": (
+                                f"После следующей · Гайд №{after_next['number']}: "
+                                f"{after_next['title']} →"
+                            ),
+                            "role": "secondary",
+                        }
+                    )
+
+                self.assertEqual(parser.series_anchors, expected_anchors)
 
     def test_each_guide_renders_exact_source_byline(self):
-        for slug, expected in GUIDES.items():
-            with self.subTest(slug=slug):
-                _, parser = self.pages[slug]
+        for expected in self.guides:
+            with self.subTest(slug=expected["slug"]):
+                _, parser = self.pages[expected["slug"]]
                 byline_text = " ".join("".join(parser.byline_text).split())
                 self.assertEqual(
                     byline_text,
